@@ -16,12 +16,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(passport.initialize());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Configuration de multer pour gérer l'upload des fichiers
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Dossier où les fichiers seront stockés
+    cb(null, '../uploads/'); // Dossier où les fichiers seront stockés
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -88,11 +88,7 @@ app.post('/send-email', upload.single('photo_projet'), (req, res) => {
 const io = socketIo(server, {
   cors: {
     origin: [
-      "http://192.168.8.105:3000",
-      "http://192.168.8.105:3001",
-      "http://192.168.8.105:5000",
-      "http://192.168.8.105:8081",
-      "http://192.168.8.105:8082",
+      
       "http://localhost:3000",
       "http://localhost:4000",
       "http://localhost:3001",
@@ -174,7 +170,7 @@ const syncDatabase = async () => {
 
 // Start the Server
 const PORT = 5000;
-server.listen(PORT, "192.168.8.105", () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
 

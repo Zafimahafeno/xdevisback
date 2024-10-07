@@ -137,7 +137,7 @@ const update_user = async (req, res) => {
       email_user,
     };
     if (file) {
-      const filePath = `uploads/${file.filename}`;
+      const filePath = `../uploads/${file.filename}`;
       schema = {
         nom_user,
         prenom_user,

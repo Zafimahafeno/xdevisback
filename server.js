@@ -16,12 +16,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(passport.initialize());
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/config", express.static(path.join(__dirname, "./config")));
 
 // Configuration de multer pour gérer l'upload des fichiers
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, '../uploads/'); // Dossier où les fichiers seront stockés
+    cb(null, './config/'); // Dossier où les fichiers seront stockés
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

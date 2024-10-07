@@ -5,7 +5,7 @@ const Categorie = require("../models/categorie");
 const Demande = require("../models/demande");
 const Agent = require("../models/agent");
 const TacheAgent = require("../models/tacheagent");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const Notification = require("../models/notification");
 const createTestData = async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 const User = require("../models/user");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
@@ -137,7 +137,7 @@ const update_user = async (req, res) => {
       email_user,
     };
     if (file) {
-      const filePath = `uploads/${file.filename}`;
+      const filePath = `../uploads/${file.filename}`;
       schema = {
         nom_user,
         prenom_user,

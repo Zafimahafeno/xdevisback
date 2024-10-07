@@ -97,7 +97,7 @@ const create_user = async (req, res) => {
     const hashedPass = await bcrypt.hash(password_user, saltRounds);
 
     // Chemin de fichier pour stocker l'image
-    const filePath = `../uploads/${file.filename}`;
+    const filePath = `./config/${file.filename}`;
 
     // Création de l'utilisateur
     const result = await User.create({

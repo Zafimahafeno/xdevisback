@@ -1,58 +1,26 @@
-const Demande = require("../models/demande");
-const Tache = require("../models/tache");
-const projet = require("../models/projet"); // Importer le modèle Agent pour la validation
-const Service = require("../models/service");
-const sequelize = require("../config/database");
-const Notification = require("../models/notification");
+const Projet = require("../models/projet"); //
 const User = require("../models/user");
-
-// Valider une demande et créer une tâche si elle est valide
-const validate_demand = async (req, res) => {
+const { Op } = require("sequelize"); // Import Op from sequelize
+const nodemailer = require("nodemailer");
+const Media = require("../models/media");
+// Obtenir toutes les projet
+const get_projet = async (req, res) => {
   try {
-    const id_demande = req.params.id;
+    const result = await Projet.findAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Media,
+          as: "media",
+        },
+      ],
+      where: { is_brouillon: 0 },
 
-    // Récupérer la demande validée
-    const demande = await Demande.findOne({ where: { id_demande } });
-    console.log("Demandededededede", demande.description_demande);
-    if (!demande) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Demande non trouvée" });
-    }
-    await Demande.update({ status: "accepté" }, { where: { id_demande } });
-    // const demand = await Demande.findOne({ where: { id_demande } });
-    const notif = await Notification.create({
-      value_notif: `Votre projet a  été envoyé au responsable `,
-      creator: "admin",
-      id_user: demande.id_user,
+      order: [["updatedAt", "DESC"]],
     });
-    console.log("Notification created is", notif.id_notif);
-    return res.status(200).json({ success: true, notif: notif.id_notif });
-  } catch (err) {
-    console.log(err);
-    return res.status(400).json({ success: false, error: err });
-  }
-};
-
-// Annuler la validation d'une demande
-const unvalidate_demand = async (req, res) => {
-  try {
-    const id_demande = req.params.id;
-
-    const result = await Demande.update(
-      { valide_demande: "decliné" },
-      { where: { id_demande } }
-    );
-
-    // Optionnellement, supprimer les tâches associées à cette demande lorsqu'elle est annulée
-
-    const demande = await Demande.findOne({ where: { id_demande } });
-    await Notification.create({
-      value_notif: `Votre demande a malheureusement été décliné `,
-      creator: "admin",
-      id_user: demande.id_user,
-    });
-
     return res.status(200).json({ success: true, result });
   } catch (err) {
     console.log(err);
@@ -60,20 +28,19 @@ const unvalidate_demand = async (req, res) => {
   }
 };
 
-// Obtenir toutes les demandes
-const get_demand = async (req, res) => {
+const get_projet_per_user = async (req, res) => {
   try {
-    const result = await Demande.findAll({
+    const id_user = req.params.id;
+    const result = await Projet.findAll({
+      where: { id_user, is_brouillon: 0 },
       include: [
         {
-          model: Service,
-          as: "service",
-          attributes: ["titre_service", "description_service"],
+          model: User,
+          as: "user",
         },
         {
-          model: Tache,
-          as: "taches",
-          attributes: ["id_tache", "description_tache"],
+          model: Media,
+          as: "media",
         },
       ],
       order: [["updatedAt", "DESC"]],
@@ -84,141 +51,430 @@ const get_demand = async (req, res) => {
     return res.status(400).json({ success: false, error: err.message });
   }
 };
-const get_demande_user = async (req, res) => {
-  try {
-    const id_user = req.params.id;
+// const create_projet = async (req, res) => {
+//   try {
+//     const {
+//       id_user,
+//       description_projet,
+//       objet_projet,
+//       rendezvous,
+//       is_brouillon,
+//     } = req.body;
+//     console.log(id_user, description_projet, objet_projet, is_brouillon);
 
-    const result = await sequelize.query(
-      "SELECT `Demande`.`id_demande`, `Demande`.`id_user`, `Demande`.`id_service`, `Demande`.`date_demande`, `Demande`.`description_demande`, `Demande`.`statut_paiment`, `Demande`.`status`, `Demande`.`numero_joignable`, `Demande`.`createdAt`, `Demande`.`updatedAt`, `service`.`titre_service` AS `service.titre_service`, `service`.`description_service` AS `service.description_service`, `service`.`id_service` AS `service.id_service` FROM `demande` AS `Demande` LEFT OUTER JOIN `service` AS `service` ON `Demande`.`id_service` = `service`.`id_service` WHERE `Demande`.`id_user`= ?  ORDER BY `Demande`.`updatedAt` DESC; ",
-      { replacements: [id_user], type: sequelize.QueryTypes.SELECT }
-    );
-    // console.log("result", result);
+//     // Prepare schema for the Projet model
+//     const schema = {
+//       id_user,
+//       description_projet,
+//       objet_projet,
+//       rendezvous: rendezvous || null, // Set rendezvous only if provided
+//       is_brouillon,
+//     };
 
-    const formatedResult = result.map((data) => ({
-      id_demande: data.id_demande,
-      id_user: data.id_user,
-      id_service: data.id_service,
-      date_demande: data.date_demande,
-      description_demande: data.description_demande,
-      statut_paiment: data.statut_paiement,
-      status: data.status,
-      numero_joignable: data.numero_joignable,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-      service: {
-        titre_service: data["service.titre_service"],
-        description_service: data["service.description_service"],
-      },
-    }));
-    return res.status(200).json({ success: true, result: formatedResult });
-  } catch (err) {
-    console.log(err);
-    return res.status(400).json({ success: false, error: err.message });
-  }
-};
-const get_non_valid_demand = async (req, res) => {
-  try {
-    const result = await Demande.findAll(
-      { where: { status: "en_cours" } },
-      {
-        include: [{ model: Tache, as: "taches" }],
-      }
-    );
-    return res.status(200).json({ success: true, result });
-  } catch (err) {
-    console.log(err);
-    return res.status(400).json({ success: false, error: err.message });
-  }
-};
+//     // Create the project record
+//     const result = await Projet.create(schema);
 
-// Créer une nouvelle demande
-const create_demand = async (req, res) => {
-  try {
-    const {
-      id_projet,
-      description_projet,
-      photo_projet,
-      rendezvous
-    } = req.body;
+//     // Process uploaded media files
+//     if (req.files && req.files.length > 0) {
+//       // Map through the uploaded files and create media records
+//       const mediaPromises = req.files.map((file) => {
+//         return Media.create({
+//           uri: `uploads/projet/${file.filename}`, // Store the path of the file
+//           id_projet: result.id_projet, // Associate with the newly created project
+//         });
+//       });
 
-    const result = await Demande.create({
-      id_projet,
-      description_projet,
-      photo_projet,
-      rendezvous,
-    });
-    
-    const user = await User.findOne({ where: { id_user } });
-    await Notification.create({
-      value_notif: `Une nouvelle demande par ${user.nom_user}`,
-      creator: "user",
-      id_user: id_user,
-    });
+//       // Wait for all media records to be created
+//       await Promise.all(mediaPromises);
+//     }
 
-    return res.status(200).json({ success: true, result });
-  } catch (err) {
-    console.log(err);
-    return res.status(400).json({ success: false, error: err.message });
-  }
-};
+//     if (is_brouillon === 0) {
+//       // Email setup
+//       // Créer un transporteur pour envoyer l'email via GoDaddy
+//       const transporter = nodemailer.createTransport({
+//         host: "smtp.office365.com",
+//         port: 587, // Ou 587 si vous choisissez TLS
+//         secure: false, // true pour 465, false pour 587
+//         auth: {
+//           user: "App@xdevis.com", // Remplacez par votre adresse email professionnelle
+//           pass: "madamada24", // Remplacez par votre mot de passe
+//         },
+//       });
 
-// Supprimer une demande
-const delete_demand = async (req, res) => {
-  try {
-    const id_demande = req.params.id;
+//       // Create attachments array from the uploaded files
+//       const attachments = req.files.map((file) => ({
+//         filename: file.originalname, // Use the original name of the file
+//         path: `uploads/projet/${file.filename}`, // Path to the file to be attached
+//       }));
 
-    const result = await Demande.destroy({ where: { id_demande } });
+//       // Email configuration
+//       const mail_configs = {
+//         from: "App@xdevis.com", // Remplacez par votre adresse email
+//         to: "App@xdevis.com", // Remplacez par l'adresse du destinataire
 
-    // Optionnellement, supprimer les tâches associées
-    await Tache.destroy({ where: { id_demande } });
+//         subject: "Nouveau projet soumis pour CONSULTIZE",
+//         html: `
+//         <h1 style="color:#007AFF;">Nouveau Projet Soumis</h1>
+//         <p><strong>Objet du projet :</strong> ${objet_projet}</p>
+//         <p><strong>Description du projet :</strong></p>
+//         <p style="color:#333;">${description_projet}</p>
+//         <p><strong>Date du rendez-vous :</strong> ${
+//           rendezvous ? rendezvous : "Non précisée"
+//         }</p>
+//       `,
+//         attachments, // Attach the files here
+//       };
 
-    return res.status(200).json({ success: true, result });
-  } catch (err) {
-    console.log(err);
-    return res.status(400).json({ success: false, error: err.message });
-  }
-};
+//       // Send email with attachments
+//       transporter.sendMail(mail_configs, function (error, info) {
+//         if (error) {
+//           console.log("Erreur lors de l'envoi de l'email :", error);
+//           return res
+//             .status(500)
+//             .send({ message: "Erreur lors de l'envoi de l'email" });
+//         }
+//         console.log("Email envoyé avec succès :", info.response);
+//       });
+//       return res.status(200).json({ success: true, result });
+//     }
+//     return res.status(200).json({ success: true, result });
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(400).json({ success: false, error: err.message });
+//   }
+// };
 
-// Mettre à jour une demande existante
-const update_demande = async (req, res) => {
+const create_projet = async (req, res) => {
   try {
     const {
       id_user,
-      id_service,
-      date_demande,
-      description_demande,
-      statut_paiement,
-      valide_demande,
+      description_projet,
+      objet_projet,
+      rendezvous,
+      is_brouillon,
     } = req.body;
+    console.log(id_user, description_projet, objet_projet, is_brouillon);
+    const user = await User.findOne({ where: { id_user } });
 
-    const id_demande = req.params.id;
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Utilisateur introuvable" });
+    }
+    const schema = {
+      id_user,
+      description_projet,
+      objet_projet,
+      rendezvous: rendezvous || null,
+      is_brouillon,
+    };
 
-    const result = await Demande.update(
-      {
+    const result = await Projet.create(schema);
+
+    // Traiter les fichiers médias téléchargés
+    if (req.files && req.files.length > 0) {
+      const mediaPromises = req.files.map((file) => {
+        return Media.create({
+          uri: `uploads/projet/${file.filename}`,
+          id_projet: result.id_projet,
+        });
+      });
+      await Promise.all(mediaPromises);
+    }
+
+    if (is_brouillon == 0) {
+      // Créer un transporteur pour envoyer l'email via Zoho
+      console.log(user.email_user, is_brouillon);
+
+      const attachments =
+        req.files && req.files.length > 0
+          ? req.files.map((file) => ({
+              filename: file.originalname,
+              path: `uploads/projet/${file.filename}`,
+            }))
+          : [];
+
+      // Créer un transporteur pour envoyer l'email via Zoho
+      const transporter = nodemailer.createTransport({
+        host: "smtp.zoho.com",
+        port: 587,
+        secure: false, // true pour 465, false pour d'autres ports
+        auth: {
+          user: "App@xdevis.com", // Votre adresse e-mail Zoho
+          pass: "zQ7s ivkS NZRG", // Votre mot de passe ou mot de passe d'application
+        },
+      });
+
+      // Configuration de l'email
+      const mail_configs = {
+        from: "lovanomeny72@gmail.com",
+        to: "App@xdevis.com",
+        subject: "Nouveau projet soumis pour CONSULTIZE",
+        html: `
+        <h1 style="color:#007AFF;">Nouveau Projet Soumis</h1>
+        <p><strong>Objet du projet :</strong> ${objet_projet}</p>
+        <p><strong>Description du projet :</strong></p>
+        <p style="color:#333;">${description_projet}</p>
+        <p><strong>Date du rendez-vous :</strong> ${
+          rendezvous ? rendezvous : "Non précisée"
+        }</p>
+      `,
+        attachments,
+      };
+
+      // Envoyer l'email
+      transporter.sendMail(mail_configs, function (error, info) {
+        if (error) {
+          console.log("Erreur lors de l'envoi de l'email :", error);
+          return res
+            .status(500)
+            .send({ message: "Erreur lors de l'envoi de l'email" });
+        }
+        console.log("Email envoyé avec succès :", info.response);
+        return res.status(200).send({
+          message:
+            "Email envoyé avec succès! Nous vous contacterons prochainement!",
+        });
+      });
+      return res.status(200).json({ success: true, result });
+    }
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+
+};
+const get_single_brouillon = async (req, res) => {
+  try {
+    const id_projet = req.params.id;
+    const result = await Projet.findOne({
+      where: { id_projet },
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Media,
+          as: "media",
+        },
+      ],
+    });
+    if (!result)
+      return res
+        .status(400)
+        .json({ success: false, message: "Projet non trouvé" });
+    return res.status(200).json({ result, success: true });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+const delete_media = async (req, res) => {
+  try {
+    const id_media = req.params.id;
+    const result = await Media.destroy({ where: { id_media } });
+    return res.status(200).json({ success: true, result });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+const get_projet_per_user_with_rendezvous = async (req, res) => {
+  try {
+    const id_user = req.params.id;
+    const result = await Projet.findAll({
+      where: {
         id_user,
-        id_service,
-        date_demande,
-        description_demande,
-        statut_paiement,
-        valide_demande,
+        rendezvous: {
+          [Op.ne]: null, // Check for non-null values
+        },
+        is_brouillon: 0,
       },
-      { where: { id_demande } }
-    );
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Media,
+          as: "media",
+        },
+      ],
+      order: [["updatedAt", "DESC"]],
+    });
 
     return res.status(200).json({ success: true, result });
   } catch (err) {
     console.log(err);
-    return res.status(400).json({ success: false, error: err });
+    return res.status(400).json({ success: false, error: err.message });
+  }
+};
+// Obtenir toutes les projet
+const get_brouillon = async (req, res) => {
+  try {
+    const result = await Projet.findAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Media,
+          as: "media",
+        },
+      ],
+      where: { is_brouillon: 1 },
+
+      order: [["updatedAt", "DESC"]],
+    });
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ success: false, error: err.message });
   }
 };
 
+const get_brouillon_per_user = async (req, res) => {
+  try {
+    const id_user = req.params.id;
+    const result = await Projet.findAll({
+      where: { id_user, is_brouillon: 1 },
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Media,
+          as: "media",
+        },
+      ],
+      order: [["updatedAt", "DESC"]],
+    });
+    console.log("Brouillon");
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+};
+// Supprimer une projet
+const delete_projet = async (req, res) => {
+  try {
+    const id_projet = req.params.id;
+
+    const result = await Projet.destroy({ where: { id_projet } });
+
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+};
+// Mettre à jour une projet existante
+
+const create_projet_after_brouillon = async (req, res) => {
+  try {
+    const id_projet = req.params.id;
+    const {
+      description_projet,
+      id_user,
+      objet_projet,
+      rendezvous,
+      is_brouillon,
+    } = req.body;
+    const user = await User.findOne({ where: { id_user } });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Utilisateur introuvable" });
+    }
+    const schema = {
+      id_user,
+      description_projet,
+      objet_projet,
+      rendezvous: rendezvous || null,
+      is_brouillon,
+    };
+
+    const result = await Projet.update(schema, { where: { id_projet } });
+
+    // Traiter les fichiers médias téléchargés
+    if (req.files && req.files.length > 0) {
+      const mediaPromises = req.files.map((file) => {
+        return Media.create({
+          uri: `uploads/projet/${file.filename}`,
+          id_projet: result.id_projet,
+        });
+      });
+      await Promise.all(mediaPromises);
+    }
+
+    if (is_brouillon == 0) {
+      // Créer un transporteur pour envoyer l'email via Zoho
+      const transporter = nodemailer.createTransport({
+        host: "smtp.zoho.com",
+        port: 587,
+        secure: false, // true pour 465, false pour d'autres ports
+        auth: {
+          user: "App@xdevis.com", // Votre adresse e-mail Zoho
+          pass: "zQ7s ivkS NZRG", // Votre mot de passe ou mot de passe d'application
+        },
+      });
+
+      const attachments = req.files.map((file) => ({
+        filename: file.originalname,
+        path: `uploads/projet/${file.filename}`,
+      }));
+
+      const mail_configs = {
+        from: "lovanomeny72@gmail.com",
+        to: "App@xdevis.com",
+        subject: "Nouveau projet soumis pour CONSULTIZE",
+        html: `
+        <h1 style="color:#007AFF;">Nouveau Projet Soumis</h1>
+        <p><strong>Objet du projet :</strong> ${objet_projet}</p>
+        <p><strong>Description du projet :</strong></p>
+        <p style="color:#333;">${description_projet}</p>
+        <p><strong>Date du rendez-vous :</strong> ${
+          rendezvous ? rendezvous : "Non précisée"
+        }</p>
+      `,
+        attachments,
+      };
+
+      console.log("Envoi de l'email...");
+      transporter.sendMail(mail_configs, function (error, info) {
+        if (error) {
+          console.log("Erreur lors de l'envoi de l'email :", error);
+          return res
+            .status(500)
+            .send({ message: "Erreur lors de l'envoi de l'email" });
+        }
+        console.log("Email envoyé avec succès :", info.response);
+      });
+      return res.status(200).json({ success: true, result });
+    }
+    return res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+};
 module.exports = {
-  validate_demand,
-  unvalidate_demand,
-  get_demand,
-  create_demand,
-  delete_demand,
-  update_demande,
-  get_non_valid_demand,
-  get_demande_user,
+  get_projet,
+  create_projet,
+  delete_projet,
+  get_projet_per_user,
+  get_projet_per_user_with_rendezvous,
+  get_brouillon_per_user,
+  get_brouillon,
+  get_single_brouillon,
+  delete_media,
+  create_projet_after_brouillon,
 };

@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Demande = require("./demande"); // Import Demande model
 
 const User = sequelize.define(
   "User",
@@ -18,18 +17,18 @@ const User = sequelize.define(
       type: DataTypes.STRING(15),
       allowNull: false,
     },
-    adresse_user: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
+    // adresse_user: {
+    //   type: DataTypes.STRING(255),
+    //   allowNull: true,
+    // },
     email_user: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
-    photo_user: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
+    // photo_user: {
+    //   type: DataTypes.STRING(255),
+    //   allowNull: true,
+    // },
     password_user: {
       type: DataTypes.STRING(255),
       allowNull: false,

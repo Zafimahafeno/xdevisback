@@ -1,31 +1,44 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const User = require("./user");
 
-const demande = sequelize.define(
-  "demande",
+const Projet = sequelize.define(
+  "projet",
   {
     id_projet: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-   
+    id_user:{
+      type:DataTypes.INTEGER,
+      references:{
+        model:User,
+        key:"id_user"
+      },
+      allowNull:false
+    },
+    objet_projet: {
+      type: DataTypes.STRING, // Correction ici : utiliser STRING au lieu de VARCHAR
+      allowNull: false,
+      defaultValue: "",
+    },
     description_projet: {
       type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: "",
     },
 
-    photo_projet: {
-      type: DataTypes.STRING,  // Correction ici : utiliser STRING au lieu de VARCHAR
-      allowNull: false,
-      defaultValue: "",  // Indiquer une valeur par défaut
+    rendezvous:{
+      type:DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
     },
-    
-    rendezvous: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
+    is_brouillon:{
+      type:DataTypes.INTEGER,
+      allowNull:false,
+      defaultValue:0
+    }
   },
   {
     tableName: "projet",
@@ -35,4 +48,4 @@ const demande = sequelize.define(
 
 // Define associations
 
-module.exports = demande;
+module.exports = Projet;

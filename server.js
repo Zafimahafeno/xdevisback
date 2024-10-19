@@ -41,66 +41,19 @@ app.use("/api/user", userRoutes);
 // Créer le serveur HTTP
 const server = http.createServer(app);
 
-// Route pour envoyer l'email
-// app.post("/send-email", upload.single("photo_projet"), (req, res) => {
-//   console.log(req.file); // Vérifiez si le fichier est bien reçu
-//   const { description_projet, rendezvous, objet_projet } = req.body;
-//   if (!req.file) {
-//     return res.status(400).send({ message: "Aucun fichier reçu." });
-//   }
+const User = require("./models/user");
+const Projet = require("./models/projet");
+const Media = require("./models/media");
+const Rendezvous = require("./models/rendezvous");
 
-//   const photo_projet = req.file.path; // Chemin du fichier téléchargé
-
-//   // Créer un transporteur pour envoyer l'email via Gmail
-//   const transporter = nodemailer.createTransport({
-//     service: "gmail",
-//     auth: {
-//       user: "zanajaona2404@gmail.com",
-//       pass: "rwhs wjqp lexx rftu",
-//     },
-//   });
-
-//   // Configuration de l'email
-//   const mail_configs = {
-//     from: "zanajaona2404@gmail.com",
-//     to: "zanajaona2404@gmail.com",
-//     subject: "Nouveau projet soumis pour CONSULTIZE",
-//     html: `
-//     <h1 style="color:#007AFF;">Nouveau Projet Soumis</h1>
-//     <p><strong>Objet du projet :</strong> ${objet_projet}</p>
-//     <p><strong>Description du projet :</strong></p>
-//     <p style="color:#333;">${description_projet}</p>
-//     <p><strong>Date du rendez-vous :</strong> ${
-//       rendezvous ? rendezvous : "Non précisée"
-//     }</p>
-//   `,
-//     attachments: [
-//       {
-//         path: photo_projet, // Attacher le fichier téléchargé
-//       },
-//     ],
-//   };
-
-//   // Envoyer l'email
-//   transporter.sendMail(mail_configs, function (error, info) {
-//     if (error) {
-//       console.log("Erreur lors de l'envoi de l'email :", error);
-//       return res
-//         .status(500)
-//         .send({ message: "Erreur lors de l'envoi de l'email" });
-//     }
-//     console.log("Email envoyé avec succès :", info.response);
-//     return res.status(200).send({
-//       message:
-//         "Email envoyé avec succès! Nous vous contacterons prochainement!",
-//     });
-//   });
-// });
-
-app.post("/send-email", (req, res) => {
-  const { description_projet, rendezvous, objet_projet } = req.body;
-
-  // Chemin du fichier téléchargé
+app.post("/send-email", async (req, res) => {
+  const { description_projet, rendezvous, objet_projet, id_user } = req.body;
+  console.log(rendezvous, objet_projet, id_user);
+  await Rendezvous.create({
+    rendezvous,
+    id_user,
+    objet_projet,
+  });
 
   // Créer un transporteur pour envoyer l'email via Zoho
   const transporter = nodemailer.createTransport({
@@ -122,7 +75,6 @@ app.post("/send-email", (req, res) => {
       <h1 style="color:#007AFF;">Nouveau Projet Soumis</h1>
       <p><strong>Objet du projet :</strong> ${objet_projet}</p>
       <p><strong>Description du projet :</strong></p>
-      <p style="color:#333;">${description_projet}</p>
       <p><strong>Date du rendez-vous :</strong> ${
         rendezvous ? rendezvous : "Non précisée"
       }</p>
@@ -138,16 +90,15 @@ app.post("/send-email", (req, res) => {
         .send({ message: "Erreur lors de l'envoi de l'email" });
     }
     console.log("Email envoyé avec succès :", info.response);
-    return res.status(200).send({
-      message:
-        "Email envoyé avec succès! Nous vous contacterons prochainement!",
-    });
+    return res
+      .status(200)
+      .send({
+        success: true,
+        message:
+          "Email envoyé avec succès! Nous vous contacterons prochainement!",
+      });
   });
 });
-const User = require("./models/user");
-const Projet = require("./models/projet");
-const Media = require("./models/media");
-
 // Associations
 User.hasMany(Projet, {
   foreignKey: "id_user",

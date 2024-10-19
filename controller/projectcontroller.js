@@ -3,6 +3,7 @@ const User = require("../models/user");
 const { Op } = require("sequelize"); // Import Op from sequelize
 const nodemailer = require("nodemailer");
 const Media = require("../models/media");
+const Rendezvous = require("../models/rendezvous");
 // Obtenir toutes les projet
 const get_projet = async (req, res) => {
   try {
@@ -243,7 +244,6 @@ const create_projet = async (req, res) => {
     console.log(err);
     return res.status(400).json({ success: false, error: err.message });
   }
-
 };
 const get_single_brouillon = async (req, res) => {
   try {
@@ -271,7 +271,6 @@ const get_single_brouillon = async (req, res) => {
     return res.status(400).json({ success: false, error: error.message });
   }
 };
-
 const delete_media = async (req, res) => {
   try {
     const id_media = req.params.id;
@@ -286,7 +285,7 @@ const delete_media = async (req, res) => {
 const get_projet_per_user_with_rendezvous = async (req, res) => {
   try {
     const id_user = req.params.id;
-    const result = await Projet.findAll({
+    const projet = await Projet.findAll({
       where: {
         id_user,
         rendezvous: {
@@ -306,7 +305,9 @@ const get_projet_per_user_with_rendezvous = async (req, res) => {
       ],
       order: [["updatedAt", "DESC"]],
     });
+    const rdv = await Rendezvous.findAll({ where: { id_user } });
 
+    const result = [...projet, ...rdv];
     return res.status(200).json({ success: true, result });
   } catch (err) {
     console.log(err);
@@ -466,6 +467,7 @@ const create_projet_after_brouillon = async (req, res) => {
     return res.status(400).json({ success: false, error: err.message });
   }
 };
+
 module.exports = {
   get_projet,
   create_projet,

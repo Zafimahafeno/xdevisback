@@ -45,43 +45,73 @@ const User = require("./models/user");
 const Projet = require("./models/projet");
 const Media = require("./models/media");
 const Rendezvous = require("./models/rendezvous");
+const { format } = require("date-fns-tz"); // Import zonedTimeToUtc
+const { parseISO } = require("date-fns");
+const { fr } = require("date-fns/locale");
+// Function to format the date
+function formatDateUTC(date) {
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  
+  return `${day}-${month}-${year} ${hours}:${minutes}`;
+}
+
 
 app.post("/send-email", async (req, res) => {
   const { description_projet, rendezvous, objet_projet, id_user } = req.body;
-  console.log(rendezvous, objet_projet, id_user);
-  await Rendezvous.create({
-    rendezvous,
-    id_user,
-    objet_projet,
-  });
-
-  // Créer un transporteur pour envoyer l'email via Zoho
-  const transporter = nodemailer.createTransport({
-    host: "smtp.zoho.com",
-    port: 587,
-    secure: false, // true pour 465, false pour d'autres ports
-    auth: {
-      user: "App@xdevis.com", // Votre adresse e-mail Zoho
-      pass: "zQ7s ivkS NZRG", // Votre mot de passe ou mot de passe d'application
+  const user = await User.findOne({
+    where: {
+      id_user,
     },
   });
 
-  // Configuration de l'email
+  if (!user) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Utilisateur introuvable" });
+  }
+  console.log(rendezvous, objet_projet, id_user);
+
+  // Format the rendezvous date
+  let formattedRendezvous = "Non précisée"; // Default value
+  if (rendezvous) {
+    const date = new Date(rendezvous);
+    formattedRendezvous = formatDateUTC(date); // Format to your desired forma
+    console.log(formattedRendezvous);
+  }
+
+  await Rendezvous.create({ rendezvous, id_user, objet_projet });
+
+  // Create a transporter to send the email via Zoho
+  const transporter = nodemailer.createTransport({
+    host: "smtp.zoho.com",
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: "App@xdevis.com", // Your Zoho email address
+      pass: "zQ7s ivkS NZRG", // Your password or application-specific password
+    },
+  });
+
+  // Email configuration
   const mail_configs = {
-    from: "lovanomeny72@gmail.com",
+    from: user.email_user,
     to: "App@xdevis.com",
     subject: "Nouveau projet soumis pour CONSULTIZE",
     html: `
       <h1 style="color:#007AFF;">Nouveau Projet Soumis</h1>
       <p><strong>Objet du projet :</strong> ${objet_projet}</p>
-      <p><strong>Description du projet :</strong></p>
-      <p><strong>Date du rendez-vous :</strong> ${
-        rendezvous ? rendezvous : "Non précisée"
+      <p><strong>Description du projet :</strong>${
+        description_projet || "Non précisée"
       }</p>
+      <p><strong>Date du rendez-vous :</strong> ${formattedRendezvous}</p>
     `,
   };
 
-  // Envoyer l'email
+  // Send the email
   transporter.sendMail(mail_configs, function (error, info) {
     if (error) {
       console.log("Erreur lors de l'envoi de l'email :", error);
@@ -90,13 +120,11 @@ app.post("/send-email", async (req, res) => {
         .send({ message: "Erreur lors de l'envoi de l'email" });
     }
     console.log("Email envoyé avec succès :", info.response);
-    return res
-      .status(200)
-      .send({
-        success: true,
-        message:
-          "Email envoyé avec succès! Nous vous contacterons prochainement!",
-      });
+    return res.status(200).send({
+      success: true,
+      message:
+        "Email envoyé avec succès! Nous vous contacterons prochainement!",
+    });
   });
 });
 // Associations
@@ -124,7 +152,9 @@ app.get("/", async (req, res) => {
 });
 app.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })
 );
 
 // Callback après l'authentification
@@ -133,9 +163,13 @@ app.get(
   passport.authenticate("google", { session: false }),
   (req, res) => {
     // Créer un token JWT après l'authentification
-    const token = jwt.sign({ userId: req.user.id_user }, jwtsecret, {
-      expiresIn: "24h",
-    });
+    const token = jwt.sign(
+      {
+        userId: req.user.id_user,
+      },
+      jwtsecret,
+      { expiresIn: "24h" }
+    );
 
     // Retourner une réponse avec succès et le token
     res.status(200).json({

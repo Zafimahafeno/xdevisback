@@ -4,6 +4,8 @@ const { Op } = require("sequelize"); // Import Op from sequelize
 const nodemailer = require("nodemailer");
 const Media = require("../models/media");
 const Rendezvous = require("../models/rendezvous");
+const { parseISO, format } = require("date-fns");
+const { fr } = require("date-fns/locale");
 // Obtenir toutes les projet
 const get_projet = async (req, res) => {
   try {
@@ -144,6 +146,15 @@ const get_projet_per_user = async (req, res) => {
 //     return res.status(400).json({ success: false, error: err.message });
 //   }
 // };
+function formatDateUTC(date) {
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  
+  return `${day}-${month}-${year} ${hours}:${minutes}`;
+}
 
 const create_projet = async (req, res) => {
   try {
@@ -155,6 +166,13 @@ const create_projet = async (req, res) => {
       is_brouillon,
     } = req.body;
     console.log(id_user, description_projet, objet_projet, is_brouillon);
+    // Format the rendezvous date
+    let formattedRendezvous = "Non précisée"; // Default value
+    if (rendezvous) {
+      const date = new Date(rendezvous);
+      formattedRendezvous = formatDateUTC(date); // Format to your desired forma
+      console.log(formattedRendezvous);
+    }
     const user = await User.findOne({ where: { id_user } });
 
     if (!user) {
@@ -208,7 +226,7 @@ const create_projet = async (req, res) => {
 
       // Configuration de l'email
       const mail_configs = {
-        from: "lovanomeny72@gmail.com",
+        from: user.email_user,
         to: "App@xdevis.com",
         subject: "Nouveau projet soumis pour CONSULTIZE",
         html: `
@@ -216,9 +234,7 @@ const create_projet = async (req, res) => {
         <p><strong>Objet du projet :</strong> ${objet_projet}</p>
         <p><strong>Description du projet :</strong></p>
         <p style="color:#333;">${description_projet}</p>
-        <p><strong>Date du rendez-vous :</strong> ${
-          rendezvous ? rendezvous : "Non précisée"
-        }</p>
+        <p><strong>Date du rendez-vous :</strong> ${formattedRendezvous}</p>
       `,
         attachments,
       };
@@ -389,7 +405,12 @@ const create_projet_after_brouillon = async (req, res) => {
       is_brouillon,
     } = req.body;
     const user = await User.findOne({ where: { id_user } });
-
+    let formattedRendezvous = "Non précisée"; // Default value
+    if (rendezvous) {
+      const date = new Date(rendezvous);
+      formattedRendezvous = formatDateUTC(date); // Format to your desired forma
+      console.log(formattedRendezvous);
+    }
     if (!user) {
       return res
         .status(400)
@@ -434,7 +455,7 @@ const create_projet_after_brouillon = async (req, res) => {
       }));
 
       const mail_configs = {
-        from: "lovanomeny72@gmail.com",
+        from: user.email_user,
         to: "App@xdevis.com",
         subject: "Nouveau projet soumis pour CONSULTIZE",
         html: `
@@ -442,9 +463,7 @@ const create_projet_after_brouillon = async (req, res) => {
         <p><strong>Objet du projet :</strong> ${objet_projet}</p>
         <p><strong>Description du projet :</strong></p>
         <p style="color:#333;">${description_projet}</p>
-        <p><strong>Date du rendez-vous :</strong> ${
-          rendezvous ? rendezvous : "Non précisée"
-        }</p>
+        <p><strong>Date du rendez-vous :</strong> ${formattedRendezvous}</p>
       `,
         attachments,
       };
